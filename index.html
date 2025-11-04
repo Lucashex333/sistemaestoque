@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sisteminha — Leitura de Código de Barras (Caixa opcional)</title>
+  <style>
+    :root{
+      --bg:#0f172a; /* slate-900 */
+      --panel:#111827; /* gray-900 */
+      --muted:#334155; /* slate-600 */
+      --text:#e5e7eb; /* gray-200 */
+      --accent:#22c55e; /* green-500 */
+      --danger:#ef4444; /* red-500 */
+      --warn:#f59e0b; /* amber-500 */
+      --border:#1f2937; /* gray-800 */
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#0b1222,#0f172a);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
+    .container{max-width:1100px;margin:32px auto;padding:0 16px}
+    header{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+    header h1{font-size:clamp(20px,4vw,28px);margin:0;font-weight:800;letter-spacing:.3px}
+    .badge{font-size:12px;border:1px solid var(--border);padding:4px 8px;border-radius:999px;color:#9ca3af}
+
+    .panel{background:rgba(17,24,39,.8);backdrop-filter: blur(6px);border:1px solid var(--border);border-radius:16px;padding:16px}
+    .grid{display:grid;grid-template-columns:1fr;gap:16px}
+
+    .controls{display:grid;grid-template-columns:1.1fr 1.6fr auto auto auto auto;gap:10px;align-items:center}
+
+    .input{display:flex;gap:8px;align-items:center;background:#0b1220;border:1px solid var(--border);border-radius:12px;padding:8px 12px}
+    .input input{flex:1;background:transparent;border:0;outline:none;color:var(--text);font-size:18px;letter-spacing:.5px}
+    .input kbd{font-size:12px;border:1px solid var(--border);padding:2px 6px;border-radius:6px;color:#9ca3af}
+
+    .btn{display:inline-flex;align-items:center;gap:8px;justify-content:center;border:1px solid var(--border);background:#0b1220;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:600}
+    .btn:hover{border-color:#2a364a}
+    .btn.primary{background:linear-gradient(180deg,#16a34a,#22c55e);border-color:#16a34a;color:#041309}
+    .btn.warn{background:linear-gradient(180deg,#d97706,#f59e0b);border-color:#d97706;color:#1a1203}
+    .btn.danger{background:linear-gradient(180deg,#dc2626,#ef4444);border-color:#dc2626;color:#280707}
+    .btn.ghost{background:transparent}
+
+    .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
+    table{width:100%;border-collapse:collapse;min-width:760px}
+    thead th{position:sticky;top:0;background:#0e1527;border-bottom:1px solid var(--border);text-align:left;padding:12px;font-size:12px;color:#9ca3af}
+    tbody td{padding:12px;border-bottom:1px solid var(--border);vertical-align:middle}
+    tbody tr:hover{background:#0c1426}
+    td.right, th.right{text-align:right}
+    td.center, th.center{text-align:center}
+    td small{color:#9ca3af}
+    td .editable{border:1px dashed transparent;padding:2px 6px;border-radius:8px}
+    td .editable[contenteditable="true"]{border-color:#2a364a;background:#0b1220}
+
+    .stats{display:flex;gap:16px;flex-wrap:wrap}
+    .stat{flex:1 1 180px;border:1px solid var(--border);border-radius:12px;padding:12px;background:#0b1220}
+    .stat .label{font-size:12px;color:#9ca3af}
+    .stat .value{font-size:22px;font-weight:800}
+
+    footer{opacity:.7;margin-top:12px;font-size:12px}
+
+    /* ===== Responsividade Mobile ===== */
+    @media (max-width: 880px){
+      .controls{grid-template-columns:1fr 1fr 1fr 1fr;}
+      .controls .wide{grid-column:1/-1}
+    }
+    @media (max-width: 640px){
+      .container{margin:16px auto}
+      header h1{font-size:18px}
+      .btn{padding:12px 14px}
+      .input{padding:10px 12px}
+      .input input{font-size:16px}
+      .panel{padding:12px}
+      table{min-width:100%}
+      thead{display:none}
+      tbody tr{display:block;border-bottom:1px solid var(--border);padding:10px}
+      tbody td{display:flex;justify-content:space-between;align-items:center;border:0;padding:6px 4px}
+      tbody td:before{content:attr(data-label);font-size:12px;color:#9ca3af;margin-right:10px}
+      td.right div{width:100%;justify-content:space-between}
+    }
+
+    /* ===== Impressão (Relatório Limpo) ===== */
+    @media print{
+      body{background:#fff;color:#111827}
+      .panel,.input,.btn,.badge,footer,audio{display:none!important}
+      header{margin:0 0 8px 0}
+      header h1{color:#111827}
+      .table-wrap{border:0}
+      table{min-width:0;width:100%}
+      thead th{background:#fff;color:#111827;border-bottom:1px solid #e5e7eb}
+      tbody td{border-bottom:1px solid #f1f5f9;color:#111827}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Leitor de Código de Barras → Tabela de Produtos</h1>
+      <span class="badge">Caixa <b>opcional</b> • Funciona com leitor (Enter no final)</span>
+    </header>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="controls">
+          <!-- Campo de CAIXA (opcional) -->
+          <div class="input" title="Informe a caixa (opcional)">
+            <span>📦</span>
+            <input id="boxInput" type="text" placeholder="Caixa (ex.: CX:123 ou Caixa 01) — opcional" autocomplete="off" />
+          </div>
+          <button id="btnSetBox" class="btn" title="Ativar esta caixa">Ativar Caixa</button>
+          <button id="btnFinishBox" class="btn warn" title="Finalizar a caixa atual">Finalizar Caixa</button>
+
+          <!-- Campo de SCAN -->
+          <div class="input wide" title="Posicione o cursor aqui e faça a leitura">
+            <span>🔎</span>
+            <input id="scanner" type="text" placeholder="Escaneie o código de barras… (ou digite e pressione Enter)" autofocus autocomplete="off" />
+            <kbd>Enter</kbd>
+          </div>
+
+          <button id="btnReport" class="btn primary">🖨️ Relatório limpo</button>
+          <button id="btnExport" class="btn">⬇️ Exportar CSV</button>
+          <button id="btnUndo" class="btn ghost" title="Desfazer último scan (Ctrl+Z)">↩️ Desfazer</button>
+          <button id="btnClear" class="btn danger" title="Limpar tudo">🧹 Limpar</button>
+        </div>
+      </div>
+
+      <div class="panel stats">
+        <div class="stat"><div class="label">Caixa ativa</div><div class="value" id="statBox">—</div></div>
+        <div class="stat"><div class="label">Itens distintos (caixa)</div><div class="value" id="statDistinct">0</div></div>
+        <div class="stat"><div class="label">Quantidade total (caixa)</div><div class="value" id="statTotal">0</div></div>
+        <div class="stat"><div class="label">Último código</div><div class="value" id="statLast">—</div></div>
+      </div>
+
+      <div class="panel table-wrap">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th style="width:180px">Código de Barras</th>
+              <th>Descrição (opcional)</th>
+              <th class="right" style="width:140px">Quantidade</th>
+              <th class="center" style="width:160px">Última leitura</th>
+              <th class="center" style="width:120px">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+
+      <footer>💡 Dicas: você pode somar múltiplos de uma vez usando o formato <b>CODIGO*QTD</b> (ex.: <code>7891234567890*5</code>). Tudo fica salvo automaticamente no seu navegador (localStorage). Se nenhuma caixa estiver ativa, os itens vão para <b>Sem Caixa</b>.</footer>
+    </div>
+  </div>
+
+  <audio id="beep" preload="auto">
+    <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYBHGZmZmZmZmYA" type="audio/wav">
+  </audio>
+
+  <script>
+    // ===== DOM =====
+    const input = document.getElementById('scanner');
+    const boxInput = document.getElementById('boxInput');
+    const statBox = document.getElementById('statBox');
+    const tbody = document.getElementById('tbody');
+    const statDistinct = document.getElementById('statDistinct');
+    const statTotal = document.getElementById('statTotal');
+    const statLast = document.getElementById('statLast');
+    const beep = document.getElementById('beep');
+
+    // ===== STORAGE / STATE =====
+    const NEW_KEY = 'scannerBoxesV3';
+    const OLD_KEY = 'scannerTableV1';
+    const SEM_CAIXA = 'Sem Caixa';
+
+    let state = load(NEW_KEY);
+    if(!state){
+      // Migrar do formato antigo (plano) para caixas
+      const old = load(OLD_KEY);
+      if(old && old.items){
+        state = { boxes:{}, order:[SEM_CAIXA], currentBox: SEM_CAIXA, history: [] };
+        state.boxes[SEM_CAIXA] = { id: SEM_CAIXA, createdAt: nowFmt(), items: old.items, order: old.order||[], total: Object.values(old.items).reduce((s,it)=>s+(it.qty||0),0) };
+      } else {
+        state = { boxes:{}, order:[], currentBox: SEM_CAIXA, history: [] };
+        ensureBox(SEM_CAIXA);
+      }
+      save();
+    }
+
+    function nowFmt(){
+      const d = new Date();
+      const two = n => String(n).padStart(2,'0');
+      return `${two(d.getDate())}/${two(d.getMonth()+1)}/${d.getFullYear()} ${two(d.getHours())}:${two(d.getMinutes())}`;
+    }
+    function save(){ localStorage.setItem(NEW_KEY, JSON.stringify(state)); }
+    function load(key){ try{ return JSON.parse(localStorage.getItem(key)); }catch{ return null; } }
+    function playBeep(){ try{ beep.currentTime = 0; beep.play(); }catch(e){} }
+
+    function sanitizeBox(id){ return String(id||'').trim().replace(/^[Cc][Xx]:\s*/,'').replace(/\s+/g,'_').replace(/[^0-9A-Za-z\-._]/g,''); }
+    function sanitizeCode(code){ return String(code||'').trim().replace(/[^0-9A-Za-z\-._]/g,''); }
+
+    function ensureBox(id){
+      if(!id) id = SEM_CAIXA;
+      if(!state.boxes[id]){
+        state.boxes[id] = { id, createdAt: nowFmt(), items: {}, order: [], total: 0 };
+        state.order.push(id);
+      }
+      state.currentBox = id;
+    }
+
+    function currentBox(){ return state.boxes[state.currentBox]; }
+
+    function guessType(code){
+      if(/^[0-9]{13}$/.test(code)) return 'EAN-13';
+      if(/^[0-9]{8}$/.test(code)) return 'EAN-8';
+      if(/^[0-9]{12}$/.test(code)) return 'UPC-A';
+      if(/^[0-9]{14}$/.test(code)) return 'ITF-14';
+      return '—';
+    }
+
+    function addScan(raw){
+      if(!raw) return;
+      let code = String(raw).trim();
+      let qty = 1;
+      const m = code.match(/^(\S+?)\*(\d{1,5})$/);
+      if(m){ code = m[1]; qty = parseInt(m[2],10)||1; }
+      code = sanitizeCode(code);
+      if(!code) return;
+      const box = currentBox();
+      if(!box) return;
+      if(!box.items[code]){ box.items[code] = { qty: 0, last: nowFmt(), desc: '', type: guessType(code) }; box.order.push(code); }
+      box.items[code].qty += qty;
+      box.items[code].last = nowFmt();
+      box.total += qty;
+      state.history.push({action:'scan', code, qty, boxId: box.id, ts: Date.now()});
+      playBeep();
+      render();
+    }
+
+    function render(){
+      // KPIs
+      statBox.textContent = state.currentBox || '—';
+      const box = currentBox();
+      // Tabela
+      tbody.innerHTML = '';
+      let total = 0;
+      if(box){
+        for(const code of box.order){
+          const item = box.items[code];
+          total += item.qty;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td data-label="Código"><strong>${code}</strong><br><small>${item.type||'—'}</small></td>
+            <td data-label="Descrição">
+              <span class="editable" contenteditable="true" data-code="${code}" data-field="desc" spellcheck="false" placeholder=""></span>
+            </td>
+            <td data-label="Quantidade" class="right">
+              <div style="display:flex;gap:6px;justify-content:flex-end;align-items:center">
+                <button class="btn ghost" data-act="dec" data-code="${code}" title="Diminuir">−</button>
+                <input type="number" min="0" value="${item.qty}" data-code="${code}" data-field="qty" style="width:84px;text-align:right;background:#0b1220;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 8px" />
+                <button class="btn ghost" data-act="inc" data-code="${code}" title="Aumentar">+</button>
+              </div>
+            </td>
+            <td data-label="Última leitura" class="center"><small>${item.last}</small></td>
+            <td data-label="Ações" class="center">
+              <button class="btn warn" data-act="add5" data-code="${code}">+5</button>
+              <button class="btn danger" data-act="del" data-code="${code}">Excluir</button>
+            </td>`;
+          tbody.appendChild(tr);
+          const span = tr.querySelector('[data-field="desc"]');
+          span.textContent = item.desc || '';
+        }
+      }
+      statDistinct.textContent = box ? box.order.length : 0;
+      statTotal.textContent = total;
+      statLast.textContent = state.history.at(-1)?.code || '—';
+      save();
+      keepFocus();
+    }
+
+    function keepFocus(){
+      if(document.activeElement !== input){ input.focus(); input.select(); }
+    }
+
+    // ====== UI HANDLERS ======
+    // Scanner input
+    input.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        addScan(input.value);
+        input.value = '';
+      }
+    });
+
+    // Ativar caixa
+    document.getElementById('btnSetBox').addEventListener('click', ()=>{
+      const id = sanitizeBox(boxInput.value) || SEM_CAIXA;
+      ensureBox(id);
+      render();
+    });
+    boxInput.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter'){
+        e.preventDefault();
+        const id = sanitizeBox(boxInput.value) || SEM_CAIXA;
+        ensureBox(id);
+        render();
+      }
+    });
+
+    // Finalizar caixa (volta para Sem Caixa)
+    document.getElementById('btnFinishBox').addEventListener('click', ()=>{
+      ensureBox(SEM_CAIXA);
+      render();
+    });
+
+    // Clicks nas ações da tabela
+    tbody.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button');
+      if(!btn) return;
+      const code = btn.getAttribute('data-code');
+      const act = btn.getAttribute('data-act');
+      const box = currentBox();
+      if(!box) return;
+      const item = box.items[code];
+      if(!item) return;
+      if(act === 'inc'){ item.qty++; box.total++; state.history.push({action:'inc',code,qty:1,boxId:box.id,ts:Date.now()}); }
+      if(act === 'dec'){ const prev=item.qty; item.qty = Math.max(0, item.qty-1); if(prev>0) box.total--; state.history.push({action:'dec',code,qty:1,boxId:box.id,ts:Date.now()}); }
+      if(act === 'add5'){ item.qty += 5; box.total += 5; state.history.push({action:'add5',code,qty:5,boxId:box.id,ts:Date.now()}); }
+      if(act === 'del'){
+        if(confirm(`Remover ${code}?`)){
+          box.order = box.order.filter(c=>c!==code);
+          box.total -= (item.qty||0);
+          delete box.items[code];
+          state.history.push({action:'del',code,qty:0,boxId:box.id,ts:Date.now()});
+        }
+      }
+      item.last = nowFmt();
+      render();
+    });
+
+    // Alterações em inputs da tabela
+    tbody.addEventListener('change', (e)=>{
+      const el = e.target;
+      const code = el.getAttribute('data-code');
+      const field = el.getAttribute('data-field');
+      const box = currentBox();
+      if(!box) return;
+      const item = box.items[code];
+      if(!item) return;
+      if(field === 'qty'){
+        const prev = item.qty; const v = Math.max(0, parseInt(el.value,10) || 0);
+        item.qty = v; box.total += (v - prev);
+      }
+      item.last = nowFmt();
+      render();
+    });
+
+    // Salvar descrição (contenteditable)
+    tbody.addEventListener('input', (e)=>{
+      const el = e.target;
+      if(el.getAttribute('data-field') === 'desc'){
+        const code = el.getAttribute('data-code');
+        const box = currentBox();
+        const item = box?.items[code];
+        if(item){ item.desc = el.textContent.slice(0,120); save(); }
+      }
+    });
+
+    // Desfazer
+    document.getElementById('btnUndo').addEventListener('click', undo);
+    document.addEventListener('keydown', (e)=>{ if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z'){ e.preventDefault(); undo(); } });
+    function undo(){
+      const last = state.history.pop();
+      if(!last) return;
+      const {action, code, qty, boxId} = last;
+      const box = state.boxes[boxId];
+      if(!box) return render();
+      const item = box.items[code];
+      if(action==='scan' || action==='inc' || action==='add5'){
+        if(item){ item.qty = Math.max(0, item.qty - qty); box.total = Math.max(0, box.total - qty); if(item.qty===0){ box.order = box.order.filter(c=>c!==code); delete box.items[code]; } }
+      } else if(action==='dec'){
+        if(item){ item.qty += qty; box.total += qty; }
+      } else if(action==='del'){
+        // Não temos snapshot da descrição; somente devolve o código com qty 1
+        if(!item){ box.items[code] = { qty: 1, last: nowFmt(), desc: '', type: guessType(code) }; box.order.push(code); box.total += 1; }
+      }
+      render();
+    }
+
+    // Relatório limpo (AGRUPADO POR CAIXA)
+    document.getElementById('btnReport').addEventListener('click', ()=>{
+      const parts = [];
+      parts.push(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório por Caixa</title>`);
+      parts.push(`<style>body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:24px;color:#111827}h1{margin:0 0 6px 0;font-size:20px}h2{margin:16px 0 6px 0;font-size:16px}.meta{color:#6b7280;font-size:12px;margin-bottom:14px}table{width:100%;border-collapse:collapse}th,td{padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:left}th{font-size:12px;color:#6b7280}td.qty{text-align:right;width:120px}td.code{white-space:nowrap}tfoot td{font-weight:700}@media (max-width:640px){ body{margin:12px} }@media print{ .noprint{display:none} }.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.btn{border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;background:#fff;cursor:pointer}</style></head><body>`);
+      parts.push(`<div class="topbar noprint"><button class="btn" onclick="window.print()">Imprimir</button></div>`);
+      parts.push(`<h1>Relatório por Caixa</h1>`);
+      parts.push(`<div class="meta">Gerado em ${new Date().toLocaleString()} • Caixas: ${state.order.length}</div>`);
+      for(const id of state.order){
+        const b = state.boxes[id]; if(!b) continue;
+        const rows = b.order.map(code=>({code, ...b.items[code]}));
+        const total = rows.reduce((s,r)=>s+(r?.qty||0),0);
+        parts.push(`<section><h2>Caixa ${id}</h2>`);
+        parts.push(`<div class="meta">Criada: ${b.createdAt} • Itens distintos: ${rows.length} • Quantidade: ${total}</div>`);
+        parts.push(`<table><thead><tr><th>Código</th><th>Descrição</th><th>Tipo</th><th style="text-align:right">Qtd</th><th>Última leitura</th></tr></thead><tbody>`);
+        for(const r of rows){ parts.push(`<tr><td class="code">${r.code}</td><td>${(r.desc||'').replace(/</g,'&lt;')}</td><td>${r.type||''}</td><td class="qty">${r.qty}</td><td>${r.last||''}</td></tr>`); }
+        parts.push(`</tbody><tfoot><tr><td colspan="3">Subtotal</td><td class="qty">${total}</td><td></td></tr></tfoot></table></section>`);
+      }
+      parts.push(`</body></html>`);
+      const html = parts.join('');
+      const w = window.open('', '_blank');
+      if(!w){ alert('Permita pop-ups para visualizar o relatório.'); return; }
+      w.document.open(); w.document.write(html); w.document.close();
+    });
+
+    // Export CSV (com coluna CAIXA)
+    document.getElementById('btnExport').addEventListener('click', ()=>{
+      const rows = [['caixa','codigo','descricao','quantidade','ultima_leitura','tipo']];
+      for(const id of state.order){
+        const b = state.boxes[id]; if(!b) continue;
+        for(const code of b.order){ const it = b.items[code]; rows.push([id, (code||''), (it.desc||'').replace(/\n/g,' ').trim(), String(it.qty), it.last, it.type||'']); }
+      }
+      const csv = rows.map(r=>r.map(field=>`"${String(field).replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `inventario_caixas_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 8000);
+    });
+
+    // Limpar tudo
+    document.getElementById('btnClear').addEventListener('click', ()=>{
+      if(confirm('Tem certeza que deseja limpar tudo (todas as caixas)?')){
+        state = { boxes:{}, order:[], currentBox: SEM_CAIXA, history: [] };
+        ensureBox(SEM_CAIXA);
+        render();
+      }
+    });
+
+    // Manter foco mesmo clicando fora
+    document.addEventListener('click', (e)=>{
+      const within = e.target.closest('.input');
+      if(!within) keepFocus();
+    });
+
+    // Primeira renderização
+    render();
+  </script>
+</body>
+</html>
