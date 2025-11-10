@@ -49,6 +49,125 @@ window.PRODUTOS_DB = {
   tamanho: "G",
   cor: "Preto"
 },
+// REGATA MINI LOGO PEITO • VDR002 • MILITAR • M
+"347159": {
+  codigo: "347159",
+  descricao: "Regata Von Dutch Mini Logo Peito Militar Tamanho M Referência VDR002",
+  referencia: "VDR002",
+  marca: "Von Dutch",
+  categoria: "Regata",
+  linha: "Mini Logo Peito",
+  tamanho: "M",
+  cor: "Militar"
+},
+
+// V.6 CAMISETA LOGO ORANGE • VDV26006 • PRETO • G
+"437246": {
+  codigo: "437246",
+  descricao: "Camiseta Von Dutch V.6 Logo Orange Preto Tamanho G Referência VDV26006",
+  referencia: "VDV26006",
+  marca: "Von Dutch",
+  categoria: "Camiseta",
+  linha: "V.6 Logo Orange",
+  tamanho: "G",
+  cor: "Preto"
+},
+
+// V.6 CAMISETA LOGO ORANGE • VDV26006 • PRETO • M
+"437245": {
+  codigo: "437245",
+  descricao: "Camiseta Von Dutch V.6 Logo Orange Preto Tamanho M Referência VDV26006",
+  referencia: "VDV26006",
+  marca: "Von Dutch",
+  categoria: "Camiseta",
+  linha: "V.6 Logo Orange",
+  tamanho: "M",
+  cor: "Preto"
+},
+
+// I.4 CAMISETA LOGO ML • VD0117 • BRANCO • G
+"359626": {
+  codigo: "359626",
+  descricao: "Camiseta Von Dutch I.4 Logo Manga Longa Branco Tamanho G Referência VD0117",
+  referencia: "VD0117",
+  marca: "Von Dutch",
+  categoria: "Camiseta",
+  linha: "I.4 Logo ML",
+  tamanho: "G",
+  cor: "Branco"
+},
+
+// CAMISETA VON DUTCH LOGO SIGNATURE • VD1001 • BRANCO • G
+"240495": {
+  codigo: "240495",
+  descricao: "Camiseta Von Dutch Logo Signature Branco Tamanho G Referência VD1001",
+  referencia: "VD1001",
+  marca: "Von Dutch",
+  categoria: "Camiseta",
+  linha: "Logo Signature",
+  tamanho: "G",
+  cor: "Branco"
+},
+
+// CAMISETA VON DUTCH LOGO SIGNATURE • VD1001 • BRANCO • P
+"240435": {
+  codigo: "240435",
+  descricao: "Camiseta Von Dutch Logo Signature Branco Tamanho P Referência VD1001",
+  referencia: "VD1001",
+  marca: "Von Dutch",
+  categoria: "Camiseta",
+  linha: "Logo Signature",
+  tamanho: "P",
+  cor: "Branco"
+},
+
+// REGATA MINI LOGO PEITO • VDR002 • PRETO • P
+"308076": {
+  codigo: "308076",
+  descricao: "Regata Von Dutch Mini Logo Peito Preto Tamanho P Referência VDR002",
+  referencia: "VDR002",
+  marca: "Von Dutch",
+  categoria: "Regata",
+  linha: "Mini Logo Peito",
+  tamanho: "P",
+  cor: "Preto"
+},
+
+// REGATA LOGO • VDR001 • PRETO • M • (preço antigo R$49,99)
+"303095": {
+  codigo: "303095",
+  descricao: "Regata Von Dutch Logo Preto Tamanho M Referência VDR001",
+  referencia: "VDR001",
+  marca: "Von Dutch",
+  categoria: "Regata",
+  linha: "Logo",
+  tamanho: "M",
+  cor: "Preto"
+},
+
+// REGATA LOGO • VDR001 • PRETO • M • (preço R$59,99)
+"303096": {
+  codigo: "303096",
+  descricao: "Regata Von Dutch Logo Preto Tamanho M Referência VDR001",
+  referencia: "VDR001",
+  marca: "Von Dutch",
+  categoria: "Regata",
+  linha: "Logo",
+  tamanho: "M",
+  cor: "Preto"
+},
+
+// REGATA MINI LOGO PEITO • VDR002 • BRANCO • G
+"308074": {
+  codigo: "308074",
+  descricao: "Regata Von Dutch Mini Logo Peito Branco Tamanho G Referência VDR002",
+  referencia: "VDR002",
+  marca: "Von Dutch",
+  categoria: "Regata",
+  linha: "Mini Logo Peito",
+  tamanho: "G",
+  cor: "Branco"
+},
 
   "123456": {
     codigo: "123456",
@@ -66,3 +185,4 @@ window.PRODUTOS_DB = {
   // - lembre de separar por vírgula entre os itens
   // ==================================================
 };
+
