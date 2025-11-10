@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sisteminha — Leitura de Código de Barras (Caixa opcional)</title>
+  <title>Leitor de Código de Barras — Caixas opcionais (v3.1)</title>
+  <meta name="description" content="Leitura rápida de código de barras com agrupamento por caixas, histórico com desfazer, relatório e exportação CSV." />
   <style>
     :root{
       --bg:#0f172a; /* slate-900 */
@@ -14,11 +15,12 @@
       --danger:#ef4444; /* red-500 */
       --warn:#f59e0b; /* amber-500 */
       --border:#1f2937; /* gray-800 */
+      --chip:#0b1220;
     }
     *{box-sizing:border-box}
     body{margin:0;background:linear-gradient(180deg,#0b1222,#0f172a);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
     .container{max-width:1100px;margin:32px auto;padding:0 16px}
-    header{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+    header{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap}
     header h1{font-size:clamp(20px,4vw,28px);margin:0;font-weight:800;letter-spacing:.3px}
     .badge{font-size:12px;border:1px solid var(--border);padding:4px 8px;border-radius:999px;color:#9ca3af}
 
@@ -37,6 +39,12 @@
     .btn.warn{background:linear-gradient(180deg,#d97706,#f59e0b);border-color:#d97706;color:#1a1203}
     .btn.danger{background:linear-gradient(180deg,#dc2626,#ef4444);border-color:#dc2626;color:#280707}
     .btn.ghost{background:transparent}
+
+    .chips{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{display:inline-flex;align-items:center;gap:8px;background:var(--chip);border:1px solid var(--border);padding:8px 10px;border-radius:999px}
+    .chip b{letter-spacing:.3px}
+    .chip .mini{display:inline-flex;gap:6px}
+    .chip button{border-radius:8px;padding:4px 8px}
 
     .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
     table{width:100%;border-collapse:collapse;min-width:760px}
@@ -79,7 +87,7 @@
     /* ===== Impressão (Relatório Limpo) ===== */
     @media print{
       body{background:#fff;color:#111827}
-      .panel,.input,.btn,.badge,footer,audio{display:none!important}
+      .panel,.input,.btn,.badge,footer,audio,.chips{display:none!important}
       header{margin:0 0 8px 0}
       header h1{color:#111827}
       .table-wrap{border:0}
@@ -98,30 +106,33 @@
 
     <div class="grid">
       <div class="panel">
-        <div class="controls">
+        <div class="controls" role="group" aria-label="Controles principais">
           <!-- Campo de CAIXA (opcional) -->
           <div class="input" title="Informe a caixa (opcional)">
-            <span>📦</span>
-            <input id="boxInput" type="text" placeholder="Caixa (ex.: CX:123 ou Caixa 01) — opcional" autocomplete="off" />
+            <span aria-hidden="true">📦</span>
+            <input id="boxInput" type="text" placeholder="Caixa (ex.: CX:123 ou Caixa 01) — opcional" autocomplete="off" aria-label="Caixa" />
           </div>
           <button id="btnSetBox" class="btn" title="Ativar esta caixa">Ativar Caixa</button>
           <button id="btnFinishBox" class="btn warn" title="Finalizar a caixa atual">Finalizar Caixa</button>
 
           <!-- Campo de SCAN -->
           <div class="input wide" title="Posicione o cursor aqui e faça a leitura">
-            <span>🔎</span>
-            <input id="scanner" type="text" placeholder="Escaneie o código de barras… (ou digite e pressione Enter)" autofocus autocomplete="off" />
+            <span aria-hidden="true">🔎</span>
+            <input id="scanner" type="text" placeholder="Escaneie o código de barras… (ou digite e pressione Enter)" autofocus autocomplete="off" aria-label="Scanner" />
             <kbd>Enter</kbd>
           </div>
 
           <button id="btnReport" class="btn primary">🖨️ Relatório limpo</button>
-          <button id="btnExport" class="btn">⬇️ Exportar CSV</button>
+          <button id="btnExport" class="btn" title="Exportar CSV">⬇️ Exportar CSV</button>
+          <button id="btnImport" class="btn" title="Importar CSV">⬆️ Importar CSV</button>
           <button id="btnUndo" class="btn ghost" title="Desfazer último scan (Ctrl+Z)">↩️ Desfazer</button>
           <button id="btnClear" class="btn danger" title="Limpar tudo">🧹 Limpar</button>
         </div>
       </div>
 
-      <div class="panel stats">
+      <div class="panel chips" id="boxChips" aria-live="polite"></div>
+
+      <div class="panel stats" aria-live="polite">
         <div class="stat"><div class="label">Caixa ativa</div><div class="value" id="statBox">—</div></div>
         <div class="stat"><div class="label">Itens distintos (caixa)</div><div class="value" id="statDistinct">0</div></div>
         <div class="stat"><div class="label">Quantidade total (caixa)</div><div class="value" id="statTotal">0</div></div>
@@ -136,20 +147,22 @@
               <th>Descrição (opcional)</th>
               <th class="right" style="width:140px">Quantidade</th>
               <th class="center" style="width:160px">Última leitura</th>
-              <th class="center" style="width:120px">Ações</th>
+              <th class="center" style="width:220px">Ações</th>
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
         </table>
       </div>
 
-      <footer>💡 Dicas: você pode somar múltiplos de uma vez usando o formato <b>CODIGO*QTD</b> (ex.: <code>7891234567890*5</code>). Tudo fica salvo automaticamente no seu navegador (localStorage). Se nenhuma caixa estiver ativa, os itens vão para <b>Sem Caixa</b>.</footer>
+      <footer>💡 Dicas: use <b>CODIGO*QTD</b> (ex.: <code>7891234567890*5</code>) ou <b>CODIGO x QTD</b>. Shift+Clique em <b>+</b> adiciona +10. Tudo salvo no navegador (localStorage). Se nenhuma caixa estiver ativa, os itens vão para <b>Sem Caixa</b>.</footer>
     </div>
   </div>
 
   <audio id="beep" preload="auto">
     <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYBHGZmZmZmZmYA" type="audio/wav">
   </audio>
+
+  <input type="file" id="fileInput" accept=".csv" style="display:none" />
 
   <script>
     // ===== DOM =====
@@ -161,9 +174,11 @@
     const statTotal = document.getElementById('statTotal');
     const statLast = document.getElementById('statLast');
     const beep = document.getElementById('beep');
+    const chips = document.getElementById('boxChips');
+    const fileInput = document.getElementById('fileInput');
 
     // ===== STORAGE / STATE =====
-    const NEW_KEY = 'scannerBoxesV3';
+    const NEW_KEY = 'scannerBoxesV3'; // Mantido para continuar compatível
     const OLD_KEY = 'scannerTableV1';
     const SEM_CAIXA = 'Sem Caixa';
 
@@ -188,9 +203,11 @@
     }
     function save(){ localStorage.setItem(NEW_KEY, JSON.stringify(state)); }
     function load(key){ try{ return JSON.parse(localStorage.getItem(key)); }catch{ return null; } }
-    function playBeep(){ try{ beep.currentTime = 0; beep.play(); }catch(e){} }
+    function playBeep(){
+      try{ beep.currentTime = 0; beep.play(); }catch(e){ /* browsers que bloqueiam antes de interação */ }
+    }
 
-    function sanitizeBox(id){ return String(id||'').trim().replace(/^[Cc][Xx]:\s*/,'').replace(/\s+/g,'_').replace(/[^0-9A-Za-z\-._]/g,''); }
+    function sanitizeBox(id){ return String(id||'').trim().replace(/^[Cc][Xx]:\s*/, '').replace(/\s+/g,'_').replace(/[^0-9A-Za-z\-._]/g,''); }
     function sanitizeCode(code){ return String(code||'').trim().replace(/[^0-9A-Za-z\-._]/g,''); }
 
     function ensureBox(id){
@@ -212,13 +229,20 @@
       return '—';
     }
 
+    // ====== NOVO: parser flexível ("*" ou "x") ======
+    function parseScan(raw){
+      if(!raw) return null;
+      let str = String(raw).trim();
+      // Formatos: COD*QTD | COD x QTD | CODXQTD (se X isolado)
+      const m = str.match(/^(\S+?)\s*(?:\*|x|X)\s*(\d{1,5})$/);
+      if(m){ return { code: sanitizeCode(m[1]), qty: Math.max(1, parseInt(m[2],10)||1) }; }
+      return { code: sanitizeCode(str), qty: 1 };
+    }
+
     function addScan(raw){
-      if(!raw) return;
-      let code = String(raw).trim();
-      let qty = 1;
-      const m = code.match(/^(\S+?)\*(\d{1,5})$/);
-      if(m){ code = m[1]; qty = parseInt(m[2],10)||1; }
-      code = sanitizeCode(code);
+      const parsed = parseScan(raw);
+      if(!parsed) return;
+      const { code } = parsed; let { qty } = parsed;
       if(!code) return;
       const box = currentBox();
       if(!box) return;
@@ -232,8 +256,9 @@
     }
 
     function render(){
-      // KPIs
+      // KPIs e chips de caixas
       statBox.textContent = state.currentBox || '—';
+      renderChips();
       const box = currentBox();
       // Tabela
       tbody.innerHTML = '';
@@ -259,6 +284,7 @@
             <td data-label="Ações" class="center">
               <button class="btn warn" data-act="add5" data-code="${code}">+5</button>
               <button class="btn danger" data-act="del" data-code="${code}">Excluir</button>
+              <button class="btn" data-act="move" data-code="${code}" title="Mover para outra caixa">Mover</button>
             </td>`;
           tbody.appendChild(tr);
           const span = tr.querySelector('[data-field="desc"]');
@@ -275,6 +301,66 @@
     function keepFocus(){
       if(document.activeElement !== input){ input.focus(); input.select(); }
     }
+
+    // ====== Chips de caixas (novo) ======
+    function renderChips(){
+      chips.innerHTML = '';
+      for(const id of state.order){
+        const b = state.boxes[id]; if(!b) continue;
+        const el = document.createElement('div');
+        el.className = 'chip';
+        el.innerHTML = `
+          <span role="button" tabindex="0" data-chip="switch" data-id="${id}" aria-label="Selecionar caixa ${id}"><b>${id}</b></span>
+          <span class="mini">
+            <button class="btn ghost" data-chip="rename" data-id="${id}" title="Renomear">✏️</button>
+            <button class="btn ghost" data-chip="clearbox" data-id="${id}" title="Limpar caixa">🧹</button>
+            ${id===SEM_CAIXA ? '' : `<button class="btn danger" data-chip="delete" data-id="${id}" title="Excluir caixa">🗑️</button>`}
+          </span>`;
+        if(state.currentBox === id){ el.style.outline = '2px solid #22c55e55'; }
+        chips.appendChild(el);
+      }
+    }
+
+    chips.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button,[data-chip="switch"]');
+      if(!btn) return;
+      const id = btn.getAttribute('data-id');
+      const act = btn.getAttribute('data-chip');
+      if(act==='switch'){ ensureBox(id); render(); return; }
+      if(act==='rename'){
+        const novo = prompt('Novo nome da caixa:', id);
+        if(!novo || novo===id) return;
+        const newId = sanitizeBox(novo) || id;
+        if(state.boxes[newId]){ alert('Já existe uma caixa com esse nome.'); return; }
+        state.boxes[newId] = state.boxes[id];
+        state.boxes[newId].id = newId;
+        const idx = state.order.indexOf(id); if(idx>-1) state.order[idx] = newId;
+        if(state.currentBox===id) state.currentBox = newId;
+        delete state.boxes[id];
+        save(); render();
+      }
+      if(act==='delete'){
+        if(!confirm(`Excluir a caixa "${id}"? Os itens serão movidos para "${SEM_CAIXA}".`)) return;
+        ensureBox(SEM_CAIXA);
+        const box = state.boxes[id];
+        if(box){
+          // mover itens
+          for(const code of box.order){
+            const it = box.items[code];
+            moveItem(id, SEM_CAIXA, code, it.qty, it.desc, it.type, it.last, false);
+          }
+        }
+        state.order = state.order.filter(cid=>cid!==id);
+        delete state.boxes[id];
+        save(); render();
+      }
+      if(act==='clearbox'){
+        if(!confirm(`Limpar a caixa "${id}"?`)) return;
+        const b = state.boxes[id];
+        if(b){ b.items = {}; b.order = []; b.total = 0; }
+        save(); render();
+      }
+    });
 
     // ====== UI HANDLERS ======
     // Scanner input
@@ -317,20 +403,48 @@
       if(!box) return;
       const item = box.items[code];
       if(!item) return;
-      if(act === 'inc'){ item.qty++; box.total++; state.history.push({action:'inc',code,qty:1,boxId:box.id,ts:Date.now()}); }
-      if(act === 'dec'){ const prev=item.qty; item.qty = Math.max(0, item.qty-1); if(prev>0) box.total--; state.history.push({action:'dec',code,qty:1,boxId:box.id,ts:Date.now()}); }
-      if(act === 'add5'){ item.qty += 5; box.total += 5; state.history.push({action:'add5',code,qty:5,boxId:box.id,ts:Date.now()}); }
+      if(act === 'inc'){ const add = e.shiftKey ? 10 : 1; item.qty += add; box.total += add; pushHist('inc', code, add, box.id); }
+      if(act === 'dec'){ const prev=item.qty; const dec = e.shiftKey ? 10 : 1; item.qty = Math.max(0, item.qty - dec); box.total = Math.max(0, box.total - Math.min(dec, prev)); pushHist('dec', code, dec, box.id); if(item.qty===0){ box.order = box.order.filter(c=>c!==code); delete box.items[code]; } }
+      if(act === 'add5'){ item.qty += 5; box.total += 5; pushHist('add5', code, 5, box.id); }
       if(act === 'del'){
         if(confirm(`Remover ${code}?`)){
+          // snapshot completo para Undo
+          pushHist('del', code, item.qty, box.id, {desc:item.desc, last:item.last, type:item.type});
           box.order = box.order.filter(c=>c!==code);
           box.total -= (item.qty||0);
           delete box.items[code];
-          state.history.push({action:'del',code,qty:0,boxId:box.id,ts:Date.now()});
         }
       }
-      item.last = nowFmt();
+      if(act === 'move'){
+        const destino = prompt('Mover para qual caixa? (cria se não existir)', state.currentBox);
+        const toId = sanitizeBox(destino);
+        if(!toId || toId===state.currentBox) return;
+        moveItem(state.currentBox, toId, code, item.qty, item.desc, item.type, item.last, true);
+      }
+      if(act !== 'move'){ item.last = nowFmt(); }
       render();
     });
+
+    function moveItem(fromId, toId, code, qty, desc='', type='—', last=nowFmt(), track=true){
+      ensureBox(toId);
+      const from = state.boxes[fromId];
+      const to = state.boxes[toId];
+      if(!from || !to) return;
+      if(track) pushHist('move', code, qty, fromId, {toId});
+      // remover da origem
+      const srcItem = from.items[code];
+      if(srcItem){
+        from.total -= qty;
+        from.order = from.order.filter(c=>c!==code);
+        delete from.items[code];
+      }
+      // adicionar no destino (merge)
+      if(!to.items[code]){ to.items[code] = { qty: 0, last, desc, type }; to.order.push(code); }
+      to.items[code].qty += qty; to.items[code].last = nowFmt(); to.items[code].desc = desc || to.items[code].desc; to.items[code].type = type || to.items[code].type;
+      to.total += qty;
+      ensureBox(toId);
+      save();
+    }
 
     // Alterações em inputs da tabela
     tbody.addEventListener('change', (e)=>{
@@ -344,21 +458,29 @@
       if(field === 'qty'){
         const prev = item.qty; const v = Math.max(0, parseInt(el.value,10) || 0);
         item.qty = v; box.total += (v - prev);
+        if(item.qty===0){ box.order = box.order.filter(c=>c!==code); delete box.items[code]; }
       }
       item.last = nowFmt();
       render();
     });
 
-    // Salvar descrição (contenteditable)
+    // Salvar descrição (contenteditable) — com debounce leve
+    let descTimer = null;
     tbody.addEventListener('input', (e)=>{
       const el = e.target;
       if(el.getAttribute('data-field') === 'desc'){
         const code = el.getAttribute('data-code');
         const box = currentBox();
         const item = box?.items[code];
-        if(item){ item.desc = el.textContent.slice(0,120); save(); }
+        if(item){
+          clearTimeout(descTimer);
+          const text = el.textContent.slice(0,120);
+          descTimer = setTimeout(()=>{ item.desc = text; save(); }, 150);
+        }
       }
     });
+
+    function pushHist(action, code, qty, boxId, extra){ state.history.push({action, code, qty, boxId, ts: Date.now(), ...(extra?{extra}: {})}); }
 
     // Desfazer
     document.getElementById('btnUndo').addEventListener('click', undo);
@@ -366,39 +488,64 @@
     function undo(){
       const last = state.history.pop();
       if(!last) return;
-      const {action, code, qty, boxId} = last;
+      const {action, code, qty, boxId, extra} = last;
       const box = state.boxes[boxId];
-      if(!box) return render();
-      const item = box.items[code];
       if(action==='scan' || action==='inc' || action==='add5'){
-        if(item){ item.qty = Math.max(0, item.qty - qty); box.total = Math.max(0, box.total - qty); if(item.qty===0){ box.order = box.order.filter(c=>c!==code); delete box.items[code]; } }
+        if(box && box.items[code]){
+          const item = box.items[code];
+          item.qty = Math.max(0, item.qty - qty);
+          box.total = Math.max(0, box.total - qty);
+          if(item.qty===0){ box.order = box.order.filter(c=>c!==code); delete box.items[code]; }
+        }
       } else if(action==='dec'){
-        if(item){ item.qty += qty; box.total += qty; }
+        if(box){
+          if(!box.items[code]){ box.items[code] = { qty: 0, last: nowFmt(), desc: '', type: guessType(code) }; box.order.push(code); }
+          box.items[code].qty += qty; box.total += qty;
+        }
       } else if(action==='del'){
-        // Não temos snapshot da descrição; somente devolve o código com qty 1
-        if(!item){ box.items[code] = { qty: 1, last: nowFmt(), desc: '', type: guessType(code) }; box.order.push(code); box.total += 1; }
+        if(box){
+          if(!box.items[code]){ box.items[code] = { qty: qty||1, last: extra?.last || nowFmt(), desc: extra?.desc || '', type: extra?.type || guessType(code) }; box.order.push(code); box.total += (qty||1); }
+        }
+      } else if(action==='move'){
+        // extra.toId contém destino: desfazendo = mover de volta
+        const toId = extra?.toId; if(!toId) return render();
+        moveItem(toId, boxId, code, qty, state.boxes[toId]?.items[code]?.desc, state.boxes[toId]?.items[code]?.type, nowFmt(), false);
       }
       render();
     }
 
-    // Relatório limpo (AGRUPADO POR CAIXA)
+    // Relatório limpo (AGRUPADO POR CAIXA) — com imagem do código de barras
     document.getElementById('btnReport').addEventListener('click', ()=>{
       const parts = [];
       parts.push(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório por Caixa</title>`);
-      parts.push(`<style>body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:24px;color:#111827}h1{margin:0 0 6px 0;font-size:20px}h2{margin:16px 0 6px 0;font-size:16px}.meta{color:#6b7280;font-size:12px;margin-bottom:14px}table{width:100%;border-collapse:collapse}th,td{padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:left}th{font-size:12px;color:#6b7280}td.qty{text-align:right;width:120px}td.code{white-space:nowrap}tfoot td{font-weight:700}@media (max-width:640px){ body{margin:12px} }@media print{ .noprint{display:none} }.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.btn{border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;background:#fff;cursor:pointer}</style></head><body>`);
+      parts.push(`<style>body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:24px;color:#111827}h1{margin:0 0 6px 0;font-size:20px}h2{margin:16px 0 6px 0;font-size:16px}.meta{color:#6b7280;font-size:12px;margin-bottom:14px}table{width:100%;border-collapse:collapse}th,td{padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:left}th{font-size:12px;color:#6b7280}td.qty{text-align:right;width:120px}td.code{white-space:nowrap}td.code-inner{display:flex;flex-direction:column;gap:4px;align-items:flex-start}td.code-inner svg{max-width:220px}tfoot td{font-weight:700}@media (max-width:640px){ body{margin:12px} }@media print{ .noprint{display:none} }.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.btn{border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;background:#fff;cursor:pointer}</style></head><body>`);
       parts.push(`<div class="topbar noprint"><button class="btn" onclick="window.print()">Imprimir</button></div>`);
       parts.push(`<h1>Relatório por Caixa</h1>`);
-      parts.push(`<div class="meta">Gerado em ${new Date().toLocaleString()} • Caixas: ${state.order.length}</div>`);
+      const totalCaixas = state.order.length;
+      const totalGeral = state.order.reduce((acc, id)=> acc + (state.boxes[id]?.total||0), 0);
+      parts.push(`<div class="meta">Gerado em ${new Date().toLocaleString()} • Caixas: ${totalCaixas} • Quantidade total: ${totalGeral}</div>`);
       for(const id of state.order){
         const b = state.boxes[id]; if(!b) continue;
         const rows = b.order.map(code=>({code, ...b.items[code]}));
-        const total = rows.reduce((s,r)=>s+(r?.qty||0),0);
+        const subtotal = rows.reduce((s,r)=>s+(r?.qty||0),0);
         parts.push(`<section><h2>Caixa ${id}</h2>`);
-        parts.push(`<div class="meta">Criada: ${b.createdAt} • Itens distintos: ${rows.length} • Quantidade: ${total}</div>`);
-        parts.push(`<table><thead><tr><th>Código</th><th>Descrição</th><th>Tipo</th><th style="text-align:right">Qtd</th><th>Última leitura</th></tr></thead><tbody>`);
-        for(const r of rows){ parts.push(`<tr><td class="code">${r.code}</td><td>${(r.desc||'').replace(/</g,'&lt;')}</td><td>${r.type||''}</td><td class="qty">${r.qty}</td><td>${r.last||''}</td></tr>`); }
-        parts.push(`</tbody><tfoot><tr><td colspan="3">Subtotal</td><td class="qty">${total}</td><td></td></tr></tfoot></table></section>`);
+        parts.push(`<div class="meta">Criada: ${b.createdAt} • Itens distintos: ${rows.length} • Quantidade: ${subtotal}</div>`);
+        parts.push(`<table><thead><tr><th>Código / Código de barras</th><th>Descrição</th><th>Tipo</th><th style=\"text-align:right\">Qtd</th><th>Última leitura</th></tr></thead><tbody>`);
+        for(const r of rows){
+          const safeDesc = (r.desc||'').replace(/</g,'&lt;');
+          parts.push(`<tr>
+            <td class=\"code\"><div class=\"code-inner\"><div>${r.code}</div><svg class=\"barcode\" jsbarcode-value=\"${r.code}\" jsbarcode-displayValue=\"false\" jsbarcode-margin=\"0\" jsbarcode-height=\"40\"></svg></div></td>
+            <td>${safeDesc}</td>
+            <td>${r.type||''}</td>
+            <td class=\"qty\">${r.qty}</td>
+            <td>${r.last||''}</td>
+          </tr>`);
+        }
+        parts.push(`</tbody><tfoot><tr><td colspan=\"3\">Subtotal</td><td class=\"qty\">${subtotal}</td><td></td></tr></tfoot></table></section>`);
       }
+      // JSBarcode via CDN para gerar as imagens de barras na hora do relatório
+      parts.push(`<script src=\"https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js\"><\/script>`);
+      parts.push(`<script>window.addEventListener('load',function(){if(window.JsBarcode){JsBarcode('.barcode').init();}});<\/script>`);
       parts.push(`</body></html>`);
       const html = parts.join('');
       const w = window.open('', '_blank');
@@ -422,6 +569,40 @@
       setTimeout(()=>URL.revokeObjectURL(url), 8000);
     });
 
+    // ====== Import CSV (novo) ======
+    document.getElementById('btnImport').addEventListener('click', ()=>{ fileInput.click(); });
+    fileInput.addEventListener('change', (e)=>{
+      const file = e.target.files?.[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const text = String(reader.result || '');
+        const lines = text.split(/\r?\n/).filter(Boolean);
+        let header = lines.shift();
+        const cols = header?.split(',').map(s=>s.replace(/^\"|\"$/g,'')) || [];
+        const idx = {
+          caixa: cols.indexOf('caixa'), codigo: cols.indexOf('codigo'), descricao: cols.indexOf('descricao'), quantidade: cols.indexOf('quantidade'), ultima: cols.indexOf('ultima_leitura'), tipo: cols.indexOf('tipo')
+        };
+        if(idx.codigo===-1 || idx.quantidade===-1){ alert('CSV inválido: precisa de colunas "codigo" e "quantidade".'); return; }
+        for(const line of lines){
+          const parts = line.split(',').map(s=> s.replace(/^\"|\"$/g,'').replace(/\"\"/g,'"'));
+          const caixa = sanitizeBox(parts[idx.caixa] || state.currentBox || SEM_CAIXA) || SEM_CAIXA;
+          const code = sanitizeCode(parts[idx.codigo]);
+          const desc = parts[idx.descricao] || '';
+          const qty = Math.max(0, parseInt(parts[idx.quantidade],10)||0);
+          const tipo = parts[idx.tipo] || guessType(code);
+          if(!code || qty<=0) continue;
+          ensureBox(caixa);
+          const b = state.boxes[caixa];
+          if(!b.items[code]){ b.items[code] = { qty: 0, last: nowFmt(), desc: '', type: tipo }; b.order.push(code); }
+          b.items[code].qty += qty; b.items[code].desc = b.items[code].desc || desc; b.total += qty; pushHist('scan', code, qty, b.id);
+        }
+        save(); render(); alert('Importação concluída.');
+      };
+      reader.readAsText(file, 'utf-8');
+      fileInput.value = '';
+    });
+
     // Limpar tudo
     document.getElementById('btnClear').addEventListener('click', ()=>{
       if(confirm('Tem certeza que deseja limpar tudo (todas as caixas)?')){
@@ -436,6 +617,9 @@
       const within = e.target.closest('.input');
       if(!within) keepFocus();
     });
+
+    // ===== Acessibilidade extra =====
+    input.setAttribute('aria-live','polite');
 
     // Primeira renderização
     render();
