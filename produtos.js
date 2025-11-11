@@ -50,8 +50,8 @@ window.PRODUTOS_DB = {
   cor: "Preto"
 },
 // REGATA MINI LOGO PEITO • VDR002 • MILITAR • M
-"347159": {
-  codigo: "347159",
+"342159": {
+  codigo: "342159",
   descricao: "Regata Von Dutch Mini Logo Peito Militar Tamanho M Referência VDR002",
   referencia: "VDR002",
   marca: "Von Dutch",
@@ -209,5 +209,6 @@ window.PRODUTOS_DB = {
   // - lembre de separar por vírgula entre os itens
   // ==================================================
 };
+
 
 
