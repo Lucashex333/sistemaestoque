@@ -168,6 +168,30 @@ window.PRODUTOS_DB = {
   tamanho: "G",
   cor: "Branco"
 },
+  // REGATA MINI LOGO PEITO • VDR002 • MILITAR • M
+"347159": {
+  codigo: "347159",
+  descricao: "Regata Von Dutch Mini Logo Peito Militar Tamanho M Referência VDR002",
+  referencia: "VDR002",
+  marca: "Von Dutch",
+  categoria: "Regata",
+  linha: "Mini Logo Peito",
+  tamanho: "M",
+  cor: "Militar"
+},
+
+// I.4 CAMISETA LOGO ML • VD0117 • BRANCO • G
+"359626": {
+  codigo: "359626",
+  descricao: "Camiseta Von Dutch I.4 Logo Manga Longa Branco Tamanho G Referência VD0117",
+  referencia: "VD0117",
+  marca: "Von Dutch",
+  categoria: "Camiseta",
+  linha: "I.4 Logo ML",
+  tamanho: "G",
+  cor: "Branco"
+},
+
 
   "123456": {
     codigo: "123456",
@@ -185,4 +209,5 @@ window.PRODUTOS_DB = {
   // - lembre de separar por vírgula entre os itens
   // ==================================================
 };
+
 
