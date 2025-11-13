@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Leitor de Código de Barras — Caixas opcionais (v3.1)</title>
-  <meta name="description" content="Leitura rápida de código de barras com agrupamento por caixas, histórico com desfazer, relatório e relatório." />
+  <title>Leitor de Código de Barras — Caixas + NF/Pedido</title>
+  <meta name="description" content="Leitura de código de barras com caixas, NF/Pedido por caixa, histórico com desfazer e relatório com código de barras." />
   <style>
     :root{
       --bg:#0f172a; /* slate-900 */
@@ -18,22 +18,46 @@
       --chip:#0b1220;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:linear-gradient(180deg,#0b1222,#0f172a);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
+    body{
+      margin:0;
+      background:linear-gradient(180deg,#0b1222,#0f172a);
+      color:var(--text);
+      font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif
+    }
     .container{max-width:1100px;margin:32px auto;padding:0 16px}
-    header{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap}
-    header h1{font-size:clamp(20px,4vw,28px);margin:0;font-weight:800;letter-spacing:.3px}
+    header{
+      display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap
+    }
+    header h1{
+      font-size:clamp(20px,4vw,28px);margin:0;font-weight:800;letter-spacing:.3px
+    }
     .badge{font-size:12px;border:1px solid var(--border);padding:4px 8px;border-radius:999px;color:#9ca3af}
 
-    .panel{background:rgba(17,24,39,.8);backdrop-filter: blur(6px);border:1px solid var(--border);border-radius:16px;padding:16px}
+    .panel{
+      background:rgba(17,24,39,.8);backdrop-filter: blur(6px);
+      border:1px solid var(--border);border-radius:16px;padding:16px
+    }
     .grid{display:grid;grid-template-columns:1fr;gap:16px}
 
-    .controls{display:grid;grid-template-columns:1.1fr 1.6fr auto auto auto auto;gap:10px;align-items:center}
+    .controls{
+      display:grid;grid-template-columns:1.1fr 1.4fr auto auto auto auto;gap:10px;align-items:center
+    }
 
-    .input{display:flex;gap:8px;align-items:center;background:#0b1220;border:1px solid var(--border);border-radius:12px;padding:8px 12px}
-    .input input{flex:1;background:transparent;border:0;outline:none;color:var(--text);font-size:18px;letter-spacing:.5px}
-    .input kbd{font-size:12px;border:1px solid var(--border);padding:2px 6px;border-radius:6px;color:#9ca3af}
+    .input{
+      display:flex;gap:8px;align-items:center;background:#0b1220;border:1px solid var(--border);
+      border-radius:12px;padding:8px 12px
+    }
+    .input input{
+      flex:1;background:transparent;border:0;outline:none;color:var(--text);font-size:18px;letter-spacing:.5px
+    }
+    .input kbd{
+      font-size:12px;border:1px solid var(--border);padding:2px 6px;border-radius:6px;color:#9ca3af
+    }
 
-    .btn{display:inline-flex;align-items:center;gap:8px;justify-content:center;border:1px solid var(--border);background:#0b1220;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:600}
+    .btn{
+      display:inline-flex;align-items:center;gap:8px;justify-content:center;border:1px solid var(--border);
+      background:#0b1220;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:600
+    }
     .btn:hover{border-color:#2a364a}
     .btn.primary{background:linear-gradient(180deg,#16a34a,#22c55e);border-color:#16a34a;color:#041309}
     .btn.warn{background:linear-gradient(180deg,#d97706,#f59e0b);border-color:#d97706;color:#1a1203}
@@ -41,14 +65,20 @@
     .btn.ghost{background:transparent}
 
     .chips{display:flex;gap:8px;flex-wrap:wrap}
-    .chip{display:inline-flex;align-items:center;gap:8px;background:var(--chip);border:1px solid var(--border);padding:8px 10px;border-radius:999px}
+    .chip{
+      display:inline-flex;align-items:center;gap:8px;background:var(--chip);border:1px solid var(--border);
+      padding:8px 10px;border-radius:999px
+    }
     .chip b{letter-spacing:.3px}
     .chip .mini{display:inline-flex;gap:6px}
     .chip button{border-radius:8px;padding:4px 8px}
 
     .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
     table{width:100%;border-collapse:collapse;min-width:760px}
-    thead th{position:sticky;top:0;background:#0e1527;border-bottom:1px solid var(--border);text-align:left;padding:12px;font-size:12px;color:#9ca3af}
+    thead th{
+      position:sticky;top:0;background:#0e1527;border-bottom:1px solid var(--border);
+      text-align:left;padding:12px;font-size:12px;color:#9ca3af
+    }
     tbody td{padding:12px;border-bottom:1px solid var(--border);vertical-align:middle}
     tbody tr:hover{background:#0c1426}
     td.right, th.right{text-align:right}
@@ -64,7 +94,23 @@
 
     footer{opacity:.7;margin-top:12px;font-size:12px}
 
-    /* ===== Responsividade Mobile ===== */
+    /* ===== Dialogo de Metadados (NF/Pedido) ===== */
+    .dialog-backdrop{
+      position: fixed; inset: 0; background: rgba(0,0,0,.55);
+      display:none; align-items:center; justify-content:center; z-index: 9999;
+    }
+    .dialog{
+      width: min(520px, 92vw);
+      background: #0b1220; border:1px solid var(--border);
+      border-radius:16px; padding:16px; color:var(--text);
+      box-shadow: 0 20px 60px rgba(0,0,0,.45);
+    }
+    .dialog h3{ margin:0 0 10px 0; font-size:18px; font-weight:800 }
+    .dialog .row{ display:flex; gap:10px; margin:10px 0 }
+    .dialog .row .input{ flex:1; }
+    .dialog .actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:12px }
+
+    /* ===== Responsividade ===== */
     @media (max-width: 880px){
       .controls{grid-template-columns:1fr 1fr 1fr 1fr;}
       .controls .wide{grid-column:1/-1}
@@ -84,7 +130,7 @@
       td.right div{width:100%;justify-content:space-between}
     }
 
-    /* ===== Impressão (Relatório Limpo) ===== */
+    /* ===== Impressão ===== */
     @media print{
       body{background:#fff;color:#111827}
       .panel,.input,.btn,.badge,footer,audio,.chips{display:none!important}
@@ -101,7 +147,7 @@
   <div class="container">
     <header>
       <h1>Leitor de Código de Barras → Tabela de Produtos</h1>
-      <span class="badge">Caixa <b>opcional</b> • Funciona com leitor (Enter no final)</span>
+      <span class="badge">Caixa <b>opcional</b> • NF/Pedido por caixa • Leitor com Enter</span>
     </header>
 
     <div class="grid">
@@ -122,7 +168,8 @@
             <kbd>Enter</kbd>
           </div>
 
-          <button id="btnReport" class="btn primary">🖨️ Relatório limpo</button>
+          <button id="btnReport" class="btn primary">🖨️ Relatório</button>
+          <button id="btnMeta" class="btn" title="Editar NF/Pedido da caixa ativa">🧾 Dados da Nota</button>
           <button id="btnUndo" class="btn ghost" title="Desfazer último scan (Ctrl+Z)">↩️ Desfazer</button>
           <button id="btnClear" class="btn danger" title="Limpar tudo">🧹 Limpar</button>
         </div>
@@ -141,7 +188,7 @@
         <table id="tbl">
           <thead>
             <tr>
-              <th style="width:180px">Código de Barras</th>
+              <th style="width:220px">Código de Barras</th>
               <th>Descrição (opcional)</th>
               <th class="right" style="width:140px">Quantidade</th>
               <th class="center" style="width:160px">Última leitura</th>
@@ -152,13 +199,51 @@
         </table>
       </div>
 
-      <footer>💡 Dicas: use <b>CODIGO*QTD</b> (ex.: <code>7891234567890*5</code>) ou <b>CODIGO x QTD</b>. Shift+Clique em <b>+</b> adiciona +10. Tudo salvo no navegador (localStorage). Se nenhuma caixa estiver ativa, os itens vão para <b>Sem Caixa</b>.</footer>
+      <footer>
+        💡 Dicas:
+        use <b>CODIGO*QTD</b> ou <b>CODIGO x QTD</b> (ex.: <code>7891234567890*5</code>).
+        Shift+Clique em <b>+</b> ou <b>−</b> soma/subtrai 10.
+        Tudo é salvo automaticamente no navegador (localStorage).
+        Se nenhuma caixa estiver ativa, os itens vão para <b>Sem Caixa</b>.
+      </footer>
+    </div>
+  </div>
+
+  <!-- Diálogo: NF / Pedido / Caixa -->
+  <div id="metaDialog" class="dialog-backdrop" aria-hidden="true">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="metaTitle">
+      <h3 id="metaTitle">Dados da Nota (caixa atual)</h3>
+      <div class="row">
+        <div class="input" title="Número da Nota Fiscal">
+          <span aria-hidden="true">🧾</span>
+          <input id="metaNF" type="text" placeholder="Número da Nota Fiscal" autocomplete="off">
+        </div>
+      </div>
+      <div class="row">
+        <div class="input" title="Número do Pedido">
+          <span aria-hidden="true">📑</span>
+          <input id="metaPedido" type="text" placeholder="Número do Pedido" autocomplete="off">
+        </div>
+      </div>
+      <div class="row">
+        <div class="input" title="Caixa">
+          <span aria-hidden="true">📦</span>
+          <input id="metaCaixa" type="text" placeholder="Caixa (ex.: CX:123 ou Caixa 01)" autocomplete="off">
+        </div>
+      </div>
+      <div class="actions">
+        <button id="metaCancel" class="btn">Cancelar</button>
+        <button id="metaSave" class="btn primary">Salvar & Continuar</button>
+      </div>
     </div>
   </div>
 
   <audio id="beep" preload="auto">
     <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYBHGZmZmZmZmYA" type="audio/wav">
   </audio>
+
+  <!-- Banco local de produtos -->
+  <script src="produtos.js"></script>
 
   <script>
     // ===== DOM =====
@@ -171,18 +256,34 @@
     const statLast = document.getElementById('statLast');
     const beep = document.getElementById('beep');
     const chips = document.getElementById('boxChips');
+
+    // Dialog NF/Pedido
+    const metaDialog = document.getElementById('metaDialog');
+    const metaNF = document.getElementById('metaNF');
+    const metaPedido = document.getElementById('metaPedido');
+    const metaCaixa = document.getElementById('metaCaixa');
+    const btnMeta = document.getElementById('btnMeta');
+    const metaCancel = document.getElementById('metaCancel');
+    const metaSave = document.getElementById('metaSave');
+
     // ===== STORAGE / STATE =====
-    const NEW_KEY = 'scannerBoxesV3'; // Mantido para continuar compatível
+    const NEW_KEY = 'scannerBoxesV3';
     const OLD_KEY = 'scannerTableV1';
     const SEM_CAIXA = 'Sem Caixa';
 
     let state = load(NEW_KEY);
     if(!state){
-      // Migrar do formato antigo (plano) para caixas
       const old = load(OLD_KEY);
       if(old && old.items){
         state = { boxes:{}, order:[SEM_CAIXA], currentBox: SEM_CAIXA, history: [] };
-        state.boxes[SEM_CAIXA] = { id: SEM_CAIXA, createdAt: nowFmt(), items: old.items, order: old.order||[], total: Object.values(old.items).reduce((s,it)=>s+(it.qty||0),0) };
+        state.boxes[SEM_CAIXA] = {
+          id: SEM_CAIXA,
+          createdAt: nowFmt(),
+          items: old.items,
+          order: old.order || [],
+          total: Object.values(old.items).reduce((s,it)=>s+(it.qty||0),0),
+          meta: { nf:'', pedido:'' }
+        };
       } else {
         state = { boxes:{}, order:[], currentBox: SEM_CAIXA, history: [] };
         ensureBox(SEM_CAIXA);
@@ -197,18 +298,22 @@
     }
     function save(){ localStorage.setItem(NEW_KEY, JSON.stringify(state)); }
     function load(key){ try{ return JSON.parse(localStorage.getItem(key)); }catch{ return null; } }
-    function playBeep(){
-      try{ beep.currentTime = 0; beep.play(); }catch(e){ /* browsers que bloqueiam antes de interação */ }
-    }
+    function playBeep(){ try{ beep.currentTime = 0; beep.play(); }catch(e){} }
 
-    function sanitizeBox(id){ return String(id||'').trim().replace(/^[Cc][Xx]:\s*/, '').replace(/\s+/g,'_').replace(/[^0-9A-Za-z\-._]/g,''); }
-    function sanitizeCode(code){ return String(code||'').trim().replace(/[^0-9A-Za-z\-._]/g,''); }
+    function sanitizeBox(id){
+      return String(id||'').trim().replace(/^[Cc][Xx]:\s*/,'').replace(/\s+/g,'_').replace(/[^0-9A-Za-z\-._]/g,'');
+    }
+    function sanitizeCode(code){
+      return String(code||'').trim().replace(/[^0-9A-Za-z\-._]/g,'');
+    }
 
     function ensureBox(id){
       if(!id) id = SEM_CAIXA;
       if(!state.boxes[id]){
-        state.boxes[id] = { id, createdAt: nowFmt(), items: {}, order: [], total: 0 };
+        state.boxes[id] = { id, createdAt: nowFmt(), items: {}, order: [], total: 0, meta: { nf:'', pedido:'' } };
         state.order.push(id);
+      } else {
+        if(!state.boxes[id].meta) state.boxes[id].meta = { nf:'', pedido:'' };
       }
       state.currentBox = id;
     }
@@ -223,55 +328,82 @@
       return '—';
     }
 
-    // ====== NOVO: parser flexível ("*" ou "x") ======
+    // ===== Busca de produto no arquivo produtos.js =====
+    function buscarProdutoLocal(codigo){
+      if (window.PRODUTOS_DB && window.PRODUTOS_DB[codigo]) {
+        return window.PRODUTOS_DB[codigo];
+      }
+      return null;
+    }
+
+    // Parser: "COD", "COD*QTD", "COD x QTD"
     function parseScan(raw){
       if(!raw) return null;
       let str = String(raw).trim();
-      // Formatos: COD*QTD | COD x QTD | CODXQTD (se X isolado)
       const m = str.match(/^(\S+?)\s*(?:\*|x|X)\s*(\d{1,5})$/);
-      if(m){ return { code: sanitizeCode(m[1]), qty: Math.max(1, parseInt(m[2],10)||1) }; }
+      if(m) return { code: sanitizeCode(m[1]), qty: Math.max(1, parseInt(m[2],10)||1) };
       return { code: sanitizeCode(str), qty: 1 };
     }
 
     function addScan(raw){
       const parsed = parseScan(raw);
       if(!parsed) return;
+
       const { code } = parsed; let { qty } = parsed;
       if(!code) return;
+
       const box = currentBox();
       if(!box) return;
-      if(!box.items[code]){ box.items[code] = { qty: 0, last: nowFmt(), desc: '', type: guessType(code) }; box.order.push(code); }
-      box.items[code].qty += qty;
-      box.items[code].last = nowFmt();
+
+      // Bloqueio: precisa ter NF e Pedido na caixa atual
+      if(!box.meta || !box.meta.nf || !box.meta.pedido){
+        openMetaDialog(box.id);
+        flash('Informe NF e Pedido para esta caixa antes de bipar.');
+        return;
+      }
+
+      const produto = buscarProdutoLocal(code);
+
+      if(!box.items[code]){
+        box.items[code] = { qty: 0, last: nowFmt(), desc: '', type: guessType(code) };
+        box.order.push(code);
+      }
+
+      const item = box.items[code];
+      if (produto && produto.descricao) item.desc = produto.descricao;
+
+      item.qty += qty;
+      item.last = nowFmt();
       box.total += qty;
-      state.history.push({action:'scan', code, qty, boxId: box.id, ts: Date.now()});
+
+      pushHist('scan', code, qty, box.id);
       playBeep();
       render();
     }
 
     function render(){
-      // KPIs e chips de caixas
       statBox.textContent = state.currentBox || '—';
       renderChips();
+
       const box = currentBox();
-      // Tabela
       tbody.innerHTML = '';
       let total = 0;
+
       if(box){
         for(const code of box.order){
           const item = box.items[code];
           total += item.qty;
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td data-label="Código"><strong>${code}</strong><br><small>${item.type||'—'}</small></td>
+            <td data-label="Código"><strong>${code}</strong><br><small>${item.type || '—'}</small></td>
             <td data-label="Descrição">
-              <span class="editable" contenteditable="true" data-code="${code}" data-field="desc" spellcheck="false" placeholder=""></span>
+              <span class="editable" contenteditable="true" data-code="${code}" data-field="desc" spellcheck="false"></span>
             </td>
             <td data-label="Quantidade" class="right">
               <div style="display:flex;gap:6px;justify-content:flex-end;align-items:center">
-                <button class="btn ghost" data-act="dec" data-code="${code}" title="Diminuir">−</button>
+                <button class="btn ghost" data-act="dec" data-code="${code}" title="Diminuir (Shift = −10)">−</button>
                 <input type="number" min="0" value="${item.qty}" data-code="${code}" data-field="qty" style="width:84px;text-align:right;background:#0b1220;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 8px" />
-                <button class="btn ghost" data-act="inc" data-code="${code}" title="Aumentar">+</button>
+                <button class="btn ghost" data-act="inc" data-code="${code}" title="Aumentar (Shift = +10)">+</button>
               </div>
             </td>
             <td data-label="Última leitura" class="center"><small>${item.last}</small></td>
@@ -281,34 +413,38 @@
               <button class="btn" data-act="move" data-code="${code}" title="Mover para outra caixa">Mover</button>
             </td>`;
           tbody.appendChild(tr);
+
           const span = tr.querySelector('[data-field="desc"]');
           span.textContent = item.desc || '';
         }
       }
+
       statDistinct.textContent = box ? box.order.length : 0;
       statTotal.textContent = total;
       statLast.textContent = state.history.at(-1)?.code || '—';
+
       save();
       keepFocus();
     }
 
-    function keepFocus(){
-      if(document.activeElement !== input){ input.focus(); input.select(); }
-    }
+    function keepFocus(){ if(document.activeElement !== input){ input.focus(); input.select(); } }
 
-    // ====== Chips de caixas (novo) ======
+    // Chips de caixas
     function renderChips(){
       chips.innerHTML = '';
       for(const id of state.order){
         const b = state.boxes[id]; if(!b) continue;
         const el = document.createElement('div');
         el.className = 'chip';
+        const metaTxt = `${b.meta?.nf ? 'NF:'+b.meta.nf : 'NF:—'} · ${b.meta?.pedido ? 'Ped:'+b.meta.pedido : 'Ped:—'}`;
         el.innerHTML = `
-          <span role="button" tabindex="0" data-chip="switch" data-id="${id}" aria-label="Selecionar caixa ${id}"><b>${id}</b></span>
+          <span role="button" tabindex="0" data-chip="switch" data-id="${id}" aria-label="Selecionar caixa ${id}">
+            <b>${id}</b> <small style="opacity:.7">${metaTxt}</small>
+          </span>
           <span class="mini">
             <button class="btn ghost" data-chip="rename" data-id="${id}" title="Renomear">✏️</button>
             <button class="btn ghost" data-chip="clearbox" data-id="${id}" title="Limpar caixa">🧹</button>
-            ${id===SEM_CAIXA ? '' : `<button class="btn danger" data-chip="delete" data-id="${id}" title="Excluir caixa">🗑️</button>`}
+            ${id === SEM_CAIXA ? '' : `<button class="btn danger" data-chip="delete" data-id="${id}" title="Excluir caixa">🗑️</button>`}
           </span>`;
         if(state.currentBox === id){ el.style.outline = '2px solid #22c55e55'; }
         chips.appendChild(el);
@@ -316,39 +452,34 @@
     }
 
     chips.addEventListener('click', (e)=>{
-      const btn = e.target.closest('button,[data-chip="switch"]');
-      if(!btn) return;
-      const id = btn.getAttribute('data-id');
-      const act = btn.getAttribute('data-chip');
-      if(act==='switch'){ ensureBox(id); render(); return; }
-      if(act==='rename'){
+      const btn = e.target.closest('button,[data-chip="switch"]'); if(!btn) return;
+      const id = btn.getAttribute('data-id'); const act = btn.getAttribute('data-chip');
+
+      if(act === 'switch'){ ensureBox(id); render(); return; }
+      if(act === 'rename'){
         const novo = prompt('Novo nome da caixa:', id);
-        if(!novo || novo===id) return;
+        if(!novo || novo === id) return;
         const newId = sanitizeBox(novo) || id;
         if(state.boxes[newId]){ alert('Já existe uma caixa com esse nome.'); return; }
-        state.boxes[newId] = state.boxes[id];
-        state.boxes[newId].id = newId;
-        const idx = state.order.indexOf(id); if(idx>-1) state.order[idx] = newId;
-        if(state.currentBox===id) state.currentBox = newId;
-        delete state.boxes[id];
-        save(); render();
+        state.boxes[newId] = state.boxes[id]; state.boxes[newId].id = newId;
+        const idx = state.order.indexOf(id); if(idx > -1) state.order[idx] = newId;
+        if(state.currentBox === id) state.currentBox = newId;
+        delete state.boxes[id]; save(); render();
       }
-      if(act==='delete'){
+      if(act === 'delete'){
         if(!confirm(`Excluir a caixa "${id}"? Os itens serão movidos para "${SEM_CAIXA}".`)) return;
         ensureBox(SEM_CAIXA);
         const box = state.boxes[id];
         if(box){
-          // mover itens
           for(const code of box.order){
             const it = box.items[code];
             moveItem(id, SEM_CAIXA, code, it.qty, it.desc, it.type, it.last, false);
           }
         }
-        state.order = state.order.filter(cid=>cid!==id);
-        delete state.boxes[id];
-        save(); render();
+        state.order = state.order.filter(cid => cid !== id);
+        delete state.boxes[id]; save(); render();
       }
-      if(act==='clearbox'){
+      if(act === 'clearbox'){
         if(!confirm(`Limpar a caixa "${id}"?`)) return;
         const b = state.boxes[id];
         if(b){ b.items = {}; b.order = []; b.total = 0; }
@@ -356,54 +487,57 @@
       }
     });
 
-    // ====== UI HANDLERS ======
-    // Scanner input
+    // UI Handlers
     input.addEventListener('keydown', (e)=>{
       if(e.key === 'Enter'){
         e.preventDefault();
-        addScan(input.value);
-        input.value = '';
+        const valor = input.value; input.value = '';
+        addScan(valor);
       }
     });
 
-    // Ativar caixa
     document.getElementById('btnSetBox').addEventListener('click', ()=>{
       const id = sanitizeBox(boxInput.value) || SEM_CAIXA;
       ensureBox(id);
+      const b = currentBox();
       render();
+      if(!b.meta?.nf || !b.meta?.pedido) openMetaDialog(b.id);
     });
     boxInput.addEventListener('keydown', (e)=>{
       if(e.key==='Enter'){
         e.preventDefault();
         const id = sanitizeBox(boxInput.value) || SEM_CAIXA;
         ensureBox(id);
+        const b = currentBox();
         render();
+        if(!b.meta?.nf || !b.meta?.pedido) openMetaDialog(b.id);
       }
     });
 
-    // Finalizar caixa (volta para Sem Caixa)
     document.getElementById('btnFinishBox').addEventListener('click', ()=>{
-      ensureBox(SEM_CAIXA);
-      render();
+      ensureBox(SEM_CAIXA); render();
     });
 
-    // Clicks nas ações da tabela
+    // Ações da tabela
     tbody.addEventListener('click', (e)=>{
-      const btn = e.target.closest('button');
-      if(!btn) return;
+      const btn = e.target.closest('button'); if(!btn) return;
       const code = btn.getAttribute('data-code');
       const act = btn.getAttribute('data-act');
-      const box = currentBox();
-      if(!box) return;
-      const item = box.items[code];
-      if(!item) return;
-      if(act === 'inc'){ const add = e.shiftKey ? 10 : 1; item.qty += add; box.total += add; pushHist('inc', code, add, box.id); }
-      if(act === 'dec'){ const prev=item.qty; const dec = e.shiftKey ? 10 : 1; item.qty = Math.max(0, item.qty - dec); box.total = Math.max(0, box.total - Math.min(dec, prev)); pushHist('dec', code, dec, box.id); if(item.qty===0){ box.order = box.order.filter(c=>c!==code); delete box.items[code]; } }
-      if(act === 'add5'){ item.qty += 5; box.total += 5; pushHist('add5', code, 5, box.id); }
+      const box = currentBox(); if(!box) return;
+      const item = box.items[code]; if(!item) return;
+
+      if(act === 'inc'){ const add = e.shiftKey?10:1; item.qty += add; box.total += add; pushHist('inc',code,add,box.id); }
+      if(act === 'dec'){
+        const dec = e.shiftKey?10:1;
+        const prev = item.qty; item.qty = Math.max(0, item.qty - dec);
+        box.total = Math.max(0, box.total - Math.min(dec, prev));
+        pushHist('dec',code,dec,box.id);
+        if(item.qty===0){ box.order = box.order.filter(c=>c!==code); delete box.items[code]; }
+      }
+      if(act === 'add5'){ item.qty += 5; box.total += 5; pushHist('add5',code,5,box.id); }
       if(act === 'del'){
         if(confirm(`Remover ${code}?`)){
-          // snapshot completo para Undo
-          pushHist('del', code, item.qty, box.id, {desc:item.desc, last:item.last, type:item.type});
+          pushHist('del', code, item.qty, box.id, { desc:item.desc, last:item.last, type:item.type });
           box.order = box.order.filter(c=>c!==code);
           box.total -= (item.qty||0);
           delete box.items[code];
@@ -412,60 +546,62 @@
       if(act === 'move'){
         const destino = prompt('Mover para qual caixa? (cria se não existir)', state.currentBox);
         const toId = sanitizeBox(destino);
-        if(!toId || toId===state.currentBox) return;
+        if(!toId || toId === state.currentBox) return;
         moveItem(state.currentBox, toId, code, item.qty, item.desc, item.type, item.last, true);
       }
+
       if(act !== 'move'){ item.last = nowFmt(); }
       render();
     });
 
     function moveItem(fromId, toId, code, qty, desc='', type='—', last=nowFmt(), track=true){
       ensureBox(toId);
-      const from = state.boxes[fromId];
-      const to = state.boxes[toId];
+      const from = state.boxes[fromId]; const to = state.boxes[toId];
       if(!from || !to) return;
-      if(track) pushHist('move', code, qty, fromId, {toId});
-      // remover da origem
+
+      if(track) pushHist('move', code, qty, fromId, { toId });
+
       const srcItem = from.items[code];
       if(srcItem){
         from.total -= qty;
-        from.order = from.order.filter(c=>c!==code);
+        from.order = from.order.filter(c => c !== code);
         delete from.items[code];
       }
-      // adicionar no destino (merge)
-      if(!to.items[code]){ to.items[code] = { qty: 0, last, desc, type }; to.order.push(code); }
-      to.items[code].qty += qty; to.items[code].last = nowFmt(); to.items[code].desc = desc || to.items[code].desc; to.items[code].type = type || to.items[code].type;
+
+      if(!to.items[code]){
+        to.items[code] = { qty: 0, last, desc, type };
+        to.order.push(code);
+      }
+      to.items[code].qty += qty;
+      to.items[code].last = nowFmt();
+      to.items[code].desc = desc || to.items[code].desc;
+      to.items[code].type = type || to.items[code].type;
       to.total += qty;
-      ensureBox(toId);
-      save();
+      ensureBox(toId); save();
     }
 
-    // Alterações em inputs da tabela
     tbody.addEventListener('change', (e)=>{
       const el = e.target;
       const code = el.getAttribute('data-code');
       const field = el.getAttribute('data-field');
-      const box = currentBox();
-      if(!box) return;
-      const item = box.items[code];
-      if(!item) return;
+      const box = currentBox(); if(!box) return;
+      const item = box.items[code]; if(!item) return;
+
       if(field === 'qty'){
         const prev = item.qty; const v = Math.max(0, parseInt(el.value,10) || 0);
         item.qty = v; box.total += (v - prev);
         if(item.qty===0){ box.order = box.order.filter(c=>c!==code); delete box.items[code]; }
       }
-      item.last = nowFmt();
-      render();
+      item.last = nowFmt(); render();
     });
 
-    // Salvar descrição (contenteditable) — com debounce leve
+    // Descrição (contenteditable) com debounce
     let descTimer = null;
     tbody.addEventListener('input', (e)=>{
       const el = e.target;
       if(el.getAttribute('data-field') === 'desc'){
         const code = el.getAttribute('data-code');
-        const box = currentBox();
-        const item = box?.items[code];
+        const box = currentBox(); const item = box?.items[code];
         if(item){
           clearTimeout(descTimer);
           const text = el.textContent.slice(0,120);
@@ -474,16 +610,21 @@
       }
     });
 
-    function pushHist(action, code, qty, boxId, extra){ state.history.push({action, code, qty, boxId, ts: Date.now(), ...(extra?{extra}: {})}); }
+    function pushHist(action, code, qty, boxId, extra){
+      state.history.push({ action, code, qty, boxId, ts: Date.now(), ...(extra ? { extra } : {}) });
+    }
 
-    // Desfazer
+    // Undo
     document.getElementById('btnUndo').addEventListener('click', undo);
-    document.addEventListener('keydown', (e)=>{ if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z'){ e.preventDefault(); undo(); } });
+    document.addEventListener('keydown', (e)=>{
+      if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z'){ e.preventDefault(); undo(); }
+    });
+
     function undo(){
-      const last = state.history.pop();
-      if(!last) return;
-      const {action, code, qty, boxId, extra} = last;
+      const last = state.history.pop(); if(!last) return;
+      const { action, code, qty, boxId, extra } = last;
       const box = state.boxes[boxId];
+
       if(action==='scan' || action==='inc' || action==='add5'){
         if(box && box.items[code]){
           const item = box.items[code];
@@ -493,82 +634,176 @@
         }
       } else if(action==='dec'){
         if(box){
-          if(!box.items[code]){ box.items[code] = { qty: 0, last: nowFmt(), desc: '', type: guessType(code) }; box.order.push(code); }
+          if(!box.items[code]){
+            box.items[code] = { qty: 0, last: nowFmt(), desc: '', type: guessType(code) };
+            box.order.push(code);
+          }
           box.items[code].qty += qty; box.total += qty;
         }
       } else if(action==='del'){
         if(box){
-          if(!box.items[code]){ box.items[code] = { qty: qty||1, last: extra?.last || nowFmt(), desc: extra?.desc || '', type: extra?.type || guessType(code) }; box.order.push(code); box.total += (qty||1); }
+          if(!box.items[code]){
+            box.items[code] = { qty: qty || 1, last: extra?.last || nowFmt(), desc: extra?.desc || '', type: extra?.type || guessType(code) };
+            box.order.push(code); box.total += (qty || 1);
+          }
         }
       } else if(action==='move'){
-        // extra.toId contém destino: desfazendo = mover de volta
         const toId = extra?.toId; if(!toId) return render();
         moveItem(toId, boxId, code, qty, state.boxes[toId]?.items[code]?.desc, state.boxes[toId]?.items[code]?.type, nowFmt(), false);
       }
       render();
     }
 
-    // Relatório limpo (AGRUPADO POR CAIXA) — com imagem do código de barras
+    // ======= Modal NF/Pedido =======
+    function openMetaDialog(forBoxId=null){
+      const boxId = forBoxId || state.currentBox || SEM_CAIXA;
+      ensureBox(boxId);
+      const b = state.boxes[boxId];
+      metaNF.value = b.meta?.nf || '';
+      metaPedido.value = b.meta?.pedido || '';
+      metaCaixa.value = boxId;
+      metaDialog.style.display = 'flex';
+      metaDialog.setAttribute('aria-hidden','false');
+      setTimeout(()=>metaNF.focus(), 10);
+    }
+    function closeMetaDialog(){
+      metaDialog.style.display = 'none';
+      metaDialog.setAttribute('aria-hidden','true');
+    }
+    function saveMetaFromDialog(){
+      const newBoxId = sanitizeBox(metaCaixa.value) || SEM_CAIXA;
+      const nf = String(metaNF.value||'').trim();
+      const pedido = String(metaPedido.value||'').trim();
+
+      const oldId = state.currentBox;
+      if(newBoxId !== oldId){
+        if(state.boxes[newBoxId]){ alert('Já existe uma caixa com esse nome.'); return; }
+        state.boxes[newBoxId] = state.boxes[oldId];
+        state.boxes[newBoxId].id = newBoxId;
+        const idx = state.order.indexOf(oldId);
+        if(idx>-1) state.order[idx] = newBoxId;
+        if(state.currentBox === oldId) state.currentBox = newBoxId;
+        delete state.boxes[oldId];
+      }
+
+      ensureBox(newBoxId);
+      state.boxes[newBoxId].meta = { nf, pedido };
+      save(); render(); closeMetaDialog();
+    }
+
+    btnMeta.addEventListener('click', ()=> openMetaDialog());
+    metaCancel.addEventListener('click', closeMetaDialog);
+    metaSave.addEventListener('click', saveMetaFromDialog);
+
+    document.addEventListener('keydown', (e)=>{
+      if(e.key === 'Escape' && metaDialog.getAttribute('aria-hidden') === 'false') closeMetaDialog();
+    });
+    metaDialog.addEventListener('click', (e)=>{
+      if(e.target === metaDialog) closeMetaDialog();
+    });
+
+    // ===== Relatório por caixa com código de barras + NF/Pedido =====
     document.getElementById('btnReport').addEventListener('click', ()=>{
       const parts = [];
       parts.push(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório por Caixa</title>`);
-      parts.push(`<style>body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:24px;color:#111827}h1{margin:0 0 6px 0;font-size:20px}h2{margin:16px 0 6px 0;font-size:16px}.meta{color:#6b7280;font-size:12px;margin-bottom:14px}table{width:100%;border-collapse:collapse}th,td{padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:left}th{font-size:12px;color:#6b7280}td.qty{text-align:right;width:120px}td.code{white-space:nowrap}td.code-inner{display:flex;flex-direction:column;gap:4px;align-items:flex-start}td.code-inner svg{max-width:220px}tfoot td{font-weight:700}@media (max-width:640px){ body{margin:12px} }@media print{ .noprint{display:none} }.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.btn{border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;background:#fff;cursor:pointer}</style></head><body>`);
+      parts.push(`<style>
+        body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:24px;color:#111827}
+        h1{margin:0 0 6px 0;font-size:20px}
+        h2{margin:16px 0 6px 0;font-size:16px}
+        .meta{color:#6b7280;font-size:12px;margin-bottom:14px}
+        table{width:100%;border-collapse:collapse}
+        th,td{padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:left}
+        th{font-size:12px;color:#6b7280}
+        td.qty{text-align:right;width:120px}
+        td.code{white-space:nowrap}
+        td.code-inner{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+        td.code-inner svg{max-width:220px}
+        tfoot td{font-weight:700}
+        @media (max-width:640px){ body{margin:12px} }
+        @media print{ .noprint{display:none} }
+        .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+        .btn{border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;background:#fff;cursor:pointer}
+      </style></head><body>`);
       parts.push(`<div class="topbar noprint"><button class="btn" onclick="window.print()">Imprimir</button></div>`);
       parts.push(`<h1>Relatório por Caixa</h1>`);
       const totalCaixas = state.order.length;
       const totalGeral = state.order.reduce((acc, id)=> acc + (state.boxes[id]?.total||0), 0);
       parts.push(`<div class="meta">Gerado em ${new Date().toLocaleString()} • Caixas: ${totalCaixas} • Quantidade total: ${totalGeral}</div>`);
+
       for(const id of state.order){
         const b = state.boxes[id]; if(!b) continue;
         const rows = b.order.map(code=>({code, ...b.items[code]}));
         const subtotal = rows.reduce((s,r)=>s+(r?.qty||0),0);
         parts.push(`<section><h2>Caixa ${id}</h2>`);
-        parts.push(`<div class="meta">Criada: ${b.createdAt} • Itens distintos: ${rows.length} • Quantidade: ${subtotal}</div>`);
-        parts.push(`<table><thead><tr><th>Código / Código de barras</th><th>Descrição</th><th>Tipo</th><th style=\"text-align:right\">Qtd</th><th>Última leitura</th></tr></thead><tbody>`);
+        const nfTxt = (b.meta?.nf ? `NF: ${b.meta.nf}` : 'NF: —');
+        const pedidoTxt = (b.meta?.pedido ? `Pedido: ${b.meta.pedido}` : 'Pedido: —');
+        parts.push(`<div class="meta">${nfTxt} • ${pedidoTxt} • Criada: ${b.createdAt} • Itens distintos: ${rows.length} • Quantidade: ${subtotal}</div>`);
+        parts.push(`<table><thead><tr><th>Código / Código de barras</th><th>Descrição</th><th>Tipo</th><th style="text-align:right">Qtd</th><th>Última leitura</th></tr></thead><tbody>`);
         for(const r of rows){
-          const safeDesc = (r.desc||'').replace(/</g,'&lt;');
-          parts.push(`<tr>
-            <td class=\"code\"><div class=\"code-inner\"><div>${r.code}</div><svg class=\"barcode\" jsbarcode-value=\"${r.code}\" jsbarcode-displayValue=\"false\" jsbarcode-margin=\"0\" jsbarcode-height=\"40\"></svg></div></td>
-            <td>${safeDesc}</td>
-            <td>${r.type||''}</td>
-            <td class=\"qty\">${r.qty}</td>
-            <td>${r.last||''}</td>
-          </tr>`);
+          const safeDesc = (r.desc || '').replace(/</g,'&lt;');
+          parts.push(
+            `<tr>
+              <td class="code">
+                <div class="code-inner">
+                  <div>${r.code}</div>
+                  <svg class="barcode"
+                       jsbarcode-value="${r.code}"
+                       jsbarcode-displayValue="false"
+                       jsbarcode-margin="0"
+                       jsbarcode-height="40"></svg>
+                </div>
+              </td>
+              <td>${safeDesc}</td>
+              <td>${r.type || ''}</td>
+              <td class="qty">${r.qty}</td>
+              <td>${r.last || ''}</td>
+            </tr>`
+          );
         }
-        parts.push(`</tbody><tfoot><tr><td colspan=\"3\">Subtotal</td><td class=\"qty\">${subtotal}</td><td></td></tr></tfoot></table></section>`);
+        parts.push(`</tbody><tfoot><tr><td colspan="3">Subtotal</td><td class="qty">${subtotal}</td><td></td></tr></tfoot></table></section>`);
       }
-      // JSBarcode via CDN para gerar as imagens de barras na hora do relatório
-      parts.push(`<script src=\"https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js\"><\/script>`);
-      parts.push(`<script>window.addEventListener('load',function(){if(window.JsBarcode){JsBarcode('.barcode').init();}});<\/script>`);
+
+      parts.push(`<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>`);
+      parts.push(`<script>window.addEventListener('load',function(){ if(window.JsBarcode){ JsBarcode('.barcode').init(); } });<\/script>`);
       parts.push(`</body></html>`);
+
       const html = parts.join('');
       const w = window.open('', '_blank');
       if(!w){ alert('Permita pop-ups para visualizar o relatório.'); return; }
       w.document.open(); w.document.write(html); w.document.close();
     });
 
-    
-
     // Limpar tudo
     document.getElementById('btnClear').addEventListener('click', ()=>{
       if(confirm('Tem certeza que deseja limpar tudo (todas as caixas)?')){
         state = { boxes:{}, order:[], currentBox: SEM_CAIXA, history: [] };
-        ensureBox(SEM_CAIXA);
-        render();
+        ensureBox(SEM_CAIXA); render();
       }
     });
 
     // Manter foco mesmo clicando fora
-    document.addEventListener('click', (e)=>{
-      const within = e.target.closest('.input');
-      if(!within) keepFocus();
-    });
+    document.addEventListener('click', (e)=>{ const within = e.target.closest('.input'); if(!within) keepFocus(); });
 
-    // ===== Acessibilidade extra =====
+    // ===== Acessórios =====
     input.setAttribute('aria-live','polite');
+
+    function flash(msg){
+      const n = document.createElement('div');
+      n.textContent = msg;
+      Object.assign(n.style,{
+        position:'fixed', zIndex:9999, right:'16px', bottom:'16px',
+        background:'#0b1220', border:'1px solid var(--border)',
+        padding:'10px 12px', borderRadius:'10px', color:'var(--text)',
+        boxShadow:'0 6px 20px rgba(0,0,0,.35)', maxWidth:'60vw'
+      });
+      document.body.appendChild(n);
+      setTimeout(()=>{ n.style.transition='opacity .25s'; n.style.opacity='0'; }, 1800);
+      setTimeout(()=>n.remove(), 2100);
+    }
 
     // Primeira renderização
     render();
+
   </script>
 </body>
 </html>
